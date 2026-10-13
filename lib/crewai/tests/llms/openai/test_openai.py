@@ -881,6 +881,23 @@ def test_openai_input_token_count_propagates_api_errors():
         llm.get_input_tokens_count("Hello!")
 
 
+@pytest.mark.parametrize(
+    ("input_tokens", "expected"),
+    [(250, False), (251, True)],
+)
+def test_openai_tool_result_overflow_threshold_uses_input_token_count(
+    input_tokens: int, expected: bool
+):
+    """A result over one quarter of the usable context window is deferred."""
+    llm = OpenAICompletion(model="gpt-4o")
+
+    with (
+        patch.object(llm, "get_input_tokens_count", return_value=input_tokens),
+        patch.object(llm, "get_context_window_size", return_value=1_000),
+    ):
+        assert llm.is_tool_result_overflowing_threshold("tool output") is expected
+
+
 @pytest.mark.vcr(record_mode="once")
 def test_openai_input_token_count_live():
     """OpenAI returns a positive input-token count for a real request."""
